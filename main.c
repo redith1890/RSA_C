@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <gmp.h>
-#include <stdbool.h>
 #include <time.h>
+#include <string.h>
 
 void mpz_rand_num(mpz_t prime, unsigned int bits){
     mpz_t rand_num;
@@ -39,8 +39,6 @@ void euclidean(mpz_t result, mpz_t p, mpz_t q){
         mpz_mod(remainder, a, b);
         mpz_set(a, b);
         mpz_set(b, remainder);
-
-        // gmp_printf("b: %Zd, \n a: %Zd", b ,a);
     }
     mpz_set(result, a);
 
@@ -58,7 +56,7 @@ void carmichael(mpz_t result, mpz_t prime1, mpz_t prime2){
 
     mpz_init(prime1_minus_one);
     mpz_init(prime2_minus_one);
-
+    mpz_init(gcd);
     
     
     mpz_sub_ui(prime1_minus_one, prime1, 1);
@@ -72,8 +70,7 @@ void carmichael(mpz_t result, mpz_t prime1, mpz_t prime2){
     mpz_clear(prime2_minus_one);
 }
 
-
-int main() {
+void generate_keys(mpz_t keys[3]){
     mpz_t prime1, prime2, n, carmichael_n, e, e_check, d;
     
     mpz_init(prime1);
@@ -81,6 +78,7 @@ int main() {
     mpz_init(n);
     mpz_init(carmichael_n);
     mpz_init(d);
+    mpz_init(e_check);
 
     mpz_init_set_ui(e, 65537);
 
@@ -99,8 +97,9 @@ int main() {
     
     mpz_invert(d, e, carmichael_n);
 
-    gmp_printf("Public key: %Zd ^ %Zd\n", n, e);
-    gmp_printf("Private key: %Zd\n", d);
+    mpz_init_set(keys[0], n);
+    mpz_init_set(keys[1], e);
+    mpz_init_set(keys[2], d);
 
     mpz_clear(prime1);
     mpz_clear(prime2);
@@ -109,5 +108,57 @@ int main() {
     mpz_clear(carmichael_n);
     mpz_clear(e);
     mpz_clear(e_check);
+}
+void cipher(mpz_t m, mpz_t e, mpz_t n, mpz_t c){
+
+    mpz_powm(c, m, e, n);
+}
+
+int main() {
+
+    mpz_t keys[3];
+    mpz_init(keys[0]);
+    mpz_init(keys[1]);
+    mpz_init(keys[2]);
+    
+    generate_keys(keys);
+
+    // gmp_printf("My key is this Bob! %Zd ^ %Zd\n", keys[0], keys[1]);
+    // gmp_printf("Private key: %Zd\n", keys[2]);
+    
+    char message[] = "hola";
+    size_t size_message = strlen(message);
+    char concat[512] = "";
+    for (size_t i = 0; i < size_message; i++)
+    {
+        char buffer[4];
+        sprintf(buffer, "%d", (unsigned char)message[i]);
+        strcat(concat, buffer);
+    }
+    
+
+    mpz_t c, m, dm;
+    mpz_init(c);
+    mpz_init(dm);
+    mpz_init_set_str(m, concat, 10);
+    printf("Message: %s\n", concat);
+
+    // Cypher
+    mpz_powm(c, m, keys[1], keys[0]); 
+    
+    gmp_printf("Uncipher message: %Zd\n", c);
+    
+    // Decypher
+    mpz_powm(dm, c, keys[2], keys[0]); 
+    
+    gmp_printf("Uncipher message: %Zd\n", dm);
+    
+    mpz_clear(keys[0]);
+    mpz_clear(keys[1]);
+    mpz_clear(keys[2]);
+    mpz_clear(c);
+    mpz_clear(dm);
+    mpz_clear(m);
+
     return 0;
 }

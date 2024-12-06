@@ -4,7 +4,7 @@ SOURCES = main.c
 
 CC = gcc
 
-CFLAGS = -Wall -Wextra -std=c11
+CFLAGS = -g -Wall -Wextra -std=c11
 
 LDFLAGS = -lgmp
 
