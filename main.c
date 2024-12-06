@@ -109,56 +109,92 @@ void generate_keys(mpz_t keys[3]){
     mpz_clear(e);
     mpz_clear(e_check);
 }
-void cipher(mpz_t m, mpz_t e, mpz_t n, mpz_t c){
 
-    mpz_powm(c, m, e, n);
-}
 
 int main() {
 
-    mpz_t keys[3];
+    mpz_t keys[3], n, e, d;
     mpz_init(keys[0]);
     mpz_init(keys[1]);
     mpz_init(keys[2]);
+    mpz_init(n);
+    mpz_init(e);
+    mpz_init(d);
     
     generate_keys(keys);
-
-    // gmp_printf("My key is this Bob! %Zd ^ %Zd\n", keys[0], keys[1]);
-    // gmp_printf("Private key: %Zd\n", keys[2]);
     
-    char message[] = "hola";
-    size_t size_message = strlen(message);
-    char concat[512] = "";
-    for (size_t i = 0; i < size_message; i++)
-    {
-        char buffer[4];
-        sprintf(buffer, "%d", (unsigned char)message[i]);
-        strcat(concat, buffer);
-    }
-    
-
-    mpz_t c, m, dm;
-    mpz_init(c);
-    mpz_init(dm);
-    mpz_init_set_str(m, concat, 10);
-    printf("Message: %s\n", concat);
-
-    // Cypher
-    mpz_powm(c, m, keys[1], keys[0]); 
-    
-    gmp_printf("Uncipher message: %Zd\n", c);
-    
-    // Decypher
-    mpz_powm(dm, c, keys[2], keys[0]); 
-    
-    gmp_printf("Uncipher message: %Zd\n", dm);
-    
+    mpz_set(n, keys[0]);
+    mpz_set(e, keys[1]);
+    mpz_set(d, keys[2]);
     mpz_clear(keys[0]);
     mpz_clear(keys[1]);
     mpz_clear(keys[2]);
-    mpz_clear(c);
-    mpz_clear(dm);
-    mpz_clear(m);
+
+    char message[] = "hola";
+    size_t len = 4;
+    unsigned char message_bytes[len];
+
+    for (size_t i = 0; i < len; i++)
+    {
+        message_bytes[i] = (unsigned char)message[i];
+    }
+    
+
+    mpz_t total_c[4];
+    for (size_t i = 0; i < 4; i++) {
+        mpz_init(total_c[i]);
+    }
+    
+    // Encrypt
+    for (size_t i = 0; i < len; i++)
+    {
+        mpz_t c, m;
+        mpz_init(c);
+        mpz_init_set_ui(m, (int)message_bytes[i]);
+
+        
+        mpz_powm(c, m, e, n); 
+        
+        mpz_set(total_c[i], c);
+        mpz_clear(c);
+        mpz_clear(m);
+    }
+    // Print encrypted message
+    for (size_t i = 0; i < len; i++)
+    {
+        gmp_printf("Letter %d: %Zd \n",i+1 ,total_c[i]);
+    }
+    // Decrypt
+   
+    for (size_t i = 0; i < len; i++)
+    {
+        mpz_t c, m;
+        mpz_init(m);
+        mpz_init_set(c, total_c[i]);
+
+        
+        mpz_powm(m, c, d, n); 
+        gmp_printf("Letter %d: %Zd \n",i+1 ,m);
+        mpz_clear(c);
+        mpz_clear(m);
+    }
+    // int decrypted_m[len];
+    // for (size_t i = 0; i < len; i++)
+    // {
+    //     printf("%d\n", decrypted_m[i]);
+    // }
+    
+    
+
+
+    for (size_t i = 0; i < 4; i++)
+    {
+        mpz_clear(total_c[i]);
+    }
+    mpz_clear(n);
+    mpz_clear(e);
+    mpz_clear(d);
+
 
     return 0;
 }
