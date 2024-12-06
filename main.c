@@ -2,16 +2,15 @@
 #include <gmp.h>
 #include <time.h>
 #include <string.h>
-
+#include <stdlib.h>
 void mpz_rand_num(mpz_t prime, unsigned int bits){
     mpz_t rand_num;
     gmp_randstate_t state;
 
     mpz_init(rand_num);
-    mpz_init(prime);
     gmp_randinit_default(state);
 
-    unsigned long seed = (unsigned long)time(NULL);
+    unsigned long seed = (unsigned long)time(NULL) ^ (unsigned long)clock();
     gmp_randseed_ui(state, seed);
 
     mpz_urandomb(rand_num, state, bits);
@@ -111,90 +110,104 @@ void generate_keys(mpz_t keys[3]){
 }
 
 
-int main() {
+typedef struct {
+    mpz_t n;
+    mpz_t e;
+    mpz_t d;
+} RSA_Keys;
 
-    mpz_t keys[3], n, e, d;
-    mpz_init(keys[0]);
-    mpz_init(keys[1]);
-    mpz_init(keys[2]);
-    mpz_init(n);
-    mpz_init(e);
-    mpz_init(d);
+void init_rsa_keys(RSA_Keys *keys) {
+    mpz_init(keys->n);
+    mpz_init(keys->e);
+    mpz_init(keys->d);
+}
+
+void clear_rsa_keys(RSA_Keys *keys) {
+    mpz_clear(keys->n);
+    mpz_clear(keys->e);
+    mpz_clear(keys->d);
+}
+
+void get_rsa_keys(RSA_Keys *keys) {
+    mpz_t temp_keys[3];
+    mpz_init(temp_keys[0]);
+    mpz_init(temp_keys[1]);
+    mpz_init(temp_keys[2]);
     
-    generate_keys(keys);
+    generate_keys(temp_keys);
     
-    mpz_set(n, keys[0]);
-    mpz_set(e, keys[1]);
-    mpz_set(d, keys[2]);
-    mpz_clear(keys[0]);
-    mpz_clear(keys[1]);
-    mpz_clear(keys[2]);
-
-    char message[] = "hola";
-    size_t len = 4;
-    unsigned char message_bytes[len];
-
-    for (size_t i = 0; i < len; i++)
-    {
-        message_bytes[i] = (unsigned char)message[i];
-    }
+    mpz_set(keys->n, temp_keys[0]);
+    mpz_set(keys->e, temp_keys[1]);
+    mpz_set(keys->d, temp_keys[2]);
     
+    mpz_clear(temp_keys[0]);
+    mpz_clear(temp_keys[1]);
+    mpz_clear(temp_keys[2]);
+}
 
-    mpz_t total_c[4];
-    for (size_t i = 0; i < 4; i++) {
-        mpz_init(total_c[i]);
-    }
+mpz_t* encrypt_message(const char *message, size_t len, const RSA_Keys *keys) {
+    mpz_t *encrypted = (mpz_t*)malloc(len * sizeof(mpz_t));
     
-    // Encrypt
-    for (size_t i = 0; i < len; i++)
-    {
-        mpz_t c, m;
-        mpz_init(c);
-        mpz_init_set_ui(m, (int)message_bytes[i]);
-
-        
-        mpz_powm(c, m, e, n); 
-        
-        mpz_set(total_c[i], c);
-        mpz_clear(c);
+    for (size_t i = 0; i < len; i++) {
+        mpz_init(encrypted[i]);
+        mpz_t m;
+        mpz_init_set_ui(m, (unsigned char)message[i]);
+        mpz_powm(encrypted[i], m, keys->e, keys->n);
         mpz_clear(m);
     }
-    // Print encrypted message
-    for (size_t i = 0; i < len; i++)
-    {
-        gmp_printf("Letter %d: %Zd \n",i+1 ,total_c[i]);
-    }
-    // Decrypt
-   
-    for (size_t i = 0; i < len; i++)
-    {
-        mpz_t c, m;
+    
+    return encrypted;
+}
+
+char* decrypt_message(mpz_t *encrypted, size_t len, const RSA_Keys *keys) {
+    char *decrypted = (char*)malloc((len + 1) * sizeof(char));
+    
+    for (size_t i = 0; i < len; i++) {
+        mpz_t m;
         mpz_init(m);
-        mpz_init_set(c, total_c[i]);
-
-        
-        mpz_powm(m, c, d, n); 
-        gmp_printf("Letter %d: %Zd \n",i+1 ,m);
-        mpz_clear(c);
+        mpz_powm(m, encrypted[i], keys->d, keys->n);
+        unsigned long val = mpz_get_ui(m);
+        decrypted[i] = (char)val;
         mpz_clear(m);
     }
-    // int decrypted_m[len];
-    // for (size_t i = 0; i < len; i++)
-    // {
-    //     printf("%d\n", decrypted_m[i]);
-    // }
+    decrypted[len] = '\0';
     
-    
+    return decrypted;
+}
 
-
-    for (size_t i = 0; i < 4; i++)
-    {
-        mpz_clear(total_c[i]);
+void print_encrypted(mpz_t *encrypted, size_t len) {
+    printf("Encrypted Message:\n");
+    for (size_t i = 0; i < len; i++) {
+        gmp_printf("Letter %zu: %Zd\n", i+1, encrypted[i]);
     }
-    mpz_clear(n);
-    mpz_clear(e);
-    mpz_clear(d);
+}
 
+void clear_encrypted(mpz_t *encrypted, size_t len) {
+    for (size_t i = 0; i < len; i++) {
+        mpz_clear(encrypted[i]);
+    }
+    free(encrypted);
+}
+
+int main() {
+    RSA_Keys keys;
+    init_rsa_keys(&keys);
+    
+    get_rsa_keys(&keys);
+
+    char message[] = "olakase";
+    size_t len = strlen(message);
+    mpz_t *encrypted = encrypt_message(message, len, &keys);
+    
+    print_encrypted(encrypted, len);
+
+    char *decrypted = decrypt_message(encrypted, len, &keys);
+    
+    printf("\nDecrypted Message: %s\n", decrypted);
+
+    clear_encrypted(encrypted, len);
+    free(decrypted);
+    clear_rsa_keys(&keys);
 
     return 0;
 }
