@@ -3,6 +3,7 @@
 #include <time.h>
 #include <string.h>
 #include <stdlib.h>
+
 void mpz_rand_num(mpz_t prime, unsigned int bits){
     mpz_t rand_num;
     gmp_randstate_t state;
@@ -47,7 +48,7 @@ void euclidean(mpz_t result, mpz_t p, mpz_t q){
 }
 void carmichael(mpz_t result, mpz_t prime1, mpz_t prime2){
     /*
-    Since n = pq 
+    Since n = pq
     Carmichael_funciton(n) = lem(Carmichael_funciton(prime1), Carmichael_funciton(prime2))
     p & q are prime so lem(p-1,q-1)
     */
@@ -56,11 +57,11 @@ void carmichael(mpz_t result, mpz_t prime1, mpz_t prime2){
     mpz_init(prime1_minus_one);
     mpz_init(prime2_minus_one);
     mpz_init(gcd);
-    
-    
+
+
     mpz_sub_ui(prime1_minus_one, prime1, 1);
     mpz_sub_ui(prime2_minus_one, prime2, 1);
-    
+
     euclidean(gcd, prime1_minus_one, prime2_minus_one);
     mpz_mul(result, prime1_minus_one, prime2_minus_one);
     mpz_div(result, result, gcd);
@@ -71,7 +72,7 @@ void carmichael(mpz_t result, mpz_t prime1, mpz_t prime2){
 
 void generate_keys(mpz_t keys[3]){
     mpz_t prime1, prime2, n, carmichael_n, e, e_check, d;
-    
+
     mpz_init(prime1);
     mpz_init(prime2);
     mpz_init(n);
@@ -87,13 +88,13 @@ void generate_keys(mpz_t keys[3]){
     mpz_mul(n, prime1, prime2);
 
     carmichael(carmichael_n, prime1, prime2);
-    
+
     euclidean(e_check, carmichael_n, e);
     while(mpz_cmp_ui(e_check, 1)!=0){
         euclidean(e_check, carmichael_n, e);
         mpz_nextprime(e, e);
     }
-    
+
     mpz_invert(d, e, carmichael_n);
 
     mpz_init_set(keys[0], n);
@@ -133,13 +134,13 @@ void get_rsa_keys(RSA_Keys *keys) {
     mpz_init(temp_keys[0]);
     mpz_init(temp_keys[1]);
     mpz_init(temp_keys[2]);
-    
+
     generate_keys(temp_keys);
-    
+
     mpz_set(keys->n, temp_keys[0]);
     mpz_set(keys->e, temp_keys[1]);
     mpz_set(keys->d, temp_keys[2]);
-    
+
     mpz_clear(temp_keys[0]);
     mpz_clear(temp_keys[1]);
     mpz_clear(temp_keys[2]);
@@ -147,7 +148,7 @@ void get_rsa_keys(RSA_Keys *keys) {
 
 mpz_t* encrypt_message(const char *message, size_t len, const RSA_Keys *keys) {
     mpz_t *encrypted = (mpz_t*)malloc(len * sizeof(mpz_t));
-    
+
     for (size_t i = 0; i < len; i++) {
         mpz_init(encrypted[i]);
         mpz_t m;
@@ -155,13 +156,13 @@ mpz_t* encrypt_message(const char *message, size_t len, const RSA_Keys *keys) {
         mpz_powm(encrypted[i], m, keys->e, keys->n);
         mpz_clear(m);
     }
-    
+
     return encrypted;
 }
 
 char* decrypt_message(mpz_t *encrypted, size_t len, const RSA_Keys *keys) {
     char *decrypted = (char*)malloc((len + 1) * sizeof(char));
-    
+
     for (size_t i = 0; i < len; i++) {
         mpz_t m;
         mpz_init(m);
@@ -171,7 +172,7 @@ char* decrypt_message(mpz_t *encrypted, size_t len, const RSA_Keys *keys) {
         mpz_clear(m);
     }
     decrypted[len] = '\0';
-    
+
     return decrypted;
 }
 
@@ -190,19 +191,40 @@ void clear_encrypted(mpz_t *encrypted, size_t len) {
 }
 
 int main() {
+    clock_t start = clock();
+
     RSA_Keys keys;
     init_rsa_keys(&keys);
-    
+
     get_rsa_keys(&keys);
+    clock_t end = clock();
+    double time_taken = ((double)(end - start)) / CLOCKS_PER_SEC;
+    double t1 = time_taken;
+
+    gmp_printf("n: %Zd\n", keys.n);
+    gmp_printf("e: %Zd\n", keys.e);
+    gmp_printf("d: %Zd\n", keys.d);
 
     char message[] = "olakase";
     size_t len = strlen(message);
+
+    start = clock();
     mpz_t *encrypted = encrypt_message(message, len, &keys);
-    
+    end = clock();
+    time_taken = ((double)(end - start)) / CLOCKS_PER_SEC;
+    double t2 = time_taken;
+
     print_encrypted(encrypted, len);
 
+    start = clock();
     char *decrypted = decrypt_message(encrypted, len, &keys);
-    
+    end = clock();
+    time_taken = ((double)(end - start)) / CLOCKS_PER_SEC;
+
+    printf("Time for generate RSA keys: %f seconds\n", t1);
+    printf("Time for encrypt the message: %f seconds\n", t2);
+    printf("Time for decrypt the message: %f seconds\n", time_taken);
+
     printf("\nDecrypted Message: %s\n", decrypted);
 
     clear_encrypted(encrypted, len);
