@@ -8,6 +8,8 @@
 typedef uint32_t u32;
 typedef uint8_t u8;
 typedef uint64_t u64;
+#define null NULL
+#define internal static
 
 void
 mpz_rand_num(mpz_t prime, u32 bits)
@@ -18,7 +20,7 @@ mpz_rand_num(mpz_t prime, u32 bits)
 	mpz_init(rand_num);
 	gmp_randinit_default(state);
 
-	u64 seed = (u64)time(NULL) ^ (u64)clock();
+	u64 seed = (u64)time(null) ^ (u64)clock();
 	gmp_randseed_ui(state, seed);
 
 	mpz_urandomb(rand_num, state, bits);
