@@ -11,7 +11,7 @@ typedef uint64_t u64;
 #define null NULL
 #define internal static
 
-void
+internal inline void
 mpz_rand_num(mpz_t prime, u32 bits)
 {
 	mpz_t rand_num;
@@ -31,7 +31,7 @@ mpz_rand_num(mpz_t prime, u32 bits)
 	gmp_randclear(state);
 }
 
-void
+internal inline void
 carmichael(mpz_t result, mpz_t prime1, mpz_t prime2)
 {
 	/*
